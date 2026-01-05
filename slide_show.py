@@ -2,7 +2,7 @@ import os
 import sys
 import platform
 from pathlib import Path
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
 import tkinter as tk
 import locale
 
@@ -30,6 +30,21 @@ def get_image_files(directory):
         files.sort(key=lambda x: x.name.lower())
     
     return files
+
+def apply_exif_orientation(image):
+    """Apply EXIF orientation to image if present using PIL's built-in function"""
+    try:
+        # Check if image has EXIF orientation data first
+        exif = image.getexif()
+        orientation = exif.get(274) if exif else None
+        
+        # Use PIL's built-in EXIF orientation handling
+        oriented_image = ImageOps.exif_transpose(image)
+        
+        return oriented_image
+    except Exception as e:
+        # If there's any issue reading EXIF data, just return the original image
+        return image
 
 class FullscreenImageViewer:
     def __init__(self, image_files, display_time_ms=5000, dissolve_time_ms=1000, dissolve_frames=30):
@@ -60,7 +75,12 @@ class FullscreenImageViewer:
 
     def prepare_canvas(self, img_path):
         """Resize image with aspect ratio, center it on transparent canvas"""
-        img = Image.open(img_path).convert('RGBA')
+        img = Image.open(img_path)
+        
+        # Apply EXIF orientation before converting to RGBA
+        img = apply_exif_orientation(img)
+        
+        img = img.convert('RGBA')
         screen_width, screen_height = self.screen_size
         img_ratio = img.width / img.height
         screen_ratio = screen_width / screen_height
@@ -161,14 +181,29 @@ class FullscreenImageViewer:
         self.root.destroy()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1] in ['-h', '--help']:
         print("Usage: python slide_show.py <directory> [display_time_seconds] [dissolve_time_seconds]")
         print("  directory: Path to directory containing images")
         print("  display_time_seconds: Duration to show each image (default: 5.0)")
         print("  dissolve_time_seconds: Duration of dissolve transition (default: 1.0)")
-        sys.exit(1)
+        print()
+        print("Controls:")
+        print("  Right Arrow / Space: Next image")
+        print("  Left Arrow: Previous image")
+        print("  Space: Pause/Resume slideshow")
+        print("  Escape / Q: Quit")
+        sys.exit(0 if len(sys.argv) > 1 else 1)
     
     directory = sys.argv[1]
+    
+    # Validate directory exists
+    if not os.path.exists(directory):
+        print(f"Error: Directory '{directory}' does not exist.")
+        sys.exit(1)
+    
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a directory.")
+        sys.exit(1)
     
     # Parse optional timing arguments
     display_time_seconds = 5.0  # default 5 seconds

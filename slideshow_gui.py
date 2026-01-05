@@ -11,7 +11,7 @@ import os
 import platform
 import locale
 from pathlib import Path
-from PIL import Image, ImageTk, ExifTags
+from PIL import Image, ImageTk, ImageOps
 class SlideshowApp:
     def update_thumbnails(self):
         # Clear previous thumbnails
@@ -25,6 +25,8 @@ class SlideshowApp:
         for idx, img_path in enumerate(image_files):
             try:
                 img = Image.open(img_path)
+                # Apply EXIF orientation before creating thumbnail
+                img = apply_exif_orientation(img)
                 img.thumbnail((96, 96))
                 thumb = ImageTk.PhotoImage(img)
                 if idx == self.selected_thumbnail_idx:
@@ -378,35 +380,19 @@ def get_image_files(directory):
     return files
 
 def apply_exif_orientation(image):
-    """Apply EXIF orientation to image if present"""
+    """Apply EXIF orientation to image if present using PIL's built-in function"""
     try:
-        # Get EXIF data
-        exif = image._getexif()
-        if exif is not None:
-            # Find orientation tag
-            for tag, value in exif.items():
-                if ExifTags.TAGS.get(tag) == 'Orientation':
-                    # Apply rotation based on orientation value
-                    if value == 2:
-                        image = image.transpose(Image.FLIP_LEFT_RIGHT)
-                    elif value == 3:
-                        image = image.rotate(180, expand=True)
-                    elif value == 4:
-                        image = image.transpose(Image.FLIP_TOP_BOTTOM)
-                    elif value == 5:
-                        image = image.transpose(Image.FLIP_LEFT_RIGHT).rotate(90, expand=True)
-                    elif value == 6:
-                        image = image.rotate(270, expand=True)
-                    elif value == 7:
-                        image = image.transpose(Image.FLIP_LEFT_RIGHT).rotate(270, expand=True)
-                    elif value == 8:
-                        image = image.rotate(90, expand=True)
-                    break
-    except (AttributeError, KeyError, TypeError):
+        # Check if image has EXIF orientation data first
+        exif = image.getexif()
+        orientation = exif.get(274) if exif else None
+        
+        # Use PIL's built-in EXIF orientation handling
+        oriented_image = ImageOps.exif_transpose(image)
+        
+        return oriented_image
+    except Exception as e:
         # If there's any issue reading EXIF data, just return the original image
-        pass
-    
-    return image
+        return image
 
 class FullscreenImageViewer:
     def __init__(self, image_files, display_time_ms=5000, dissolve_time_ms=1000, dissolve_frames=30, 
@@ -475,10 +461,11 @@ class FullscreenImageViewer:
         """Resize image with aspect ratio, center it on black canvas"""
         try:
             print(f"Loading image: {img_path}")
-            img = Image.open(img_path).convert('RGBA')
+            img = Image.open(img_path)
             print(f"Image loaded successfully: {img.size}, mode: {img.mode}")
-            # Apply EXIF orientation before processing
+            # Apply EXIF orientation before converting to RGBA
             img = apply_exif_orientation(img)
+            img = img.convert('RGBA')
             screen_width, screen_height = self.screen_size
             img_ratio = img.width / img.height
             screen_ratio = screen_width / screen_height

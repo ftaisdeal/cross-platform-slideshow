@@ -11,6 +11,7 @@ a = Analysis(
         'PIL',
         'PIL.Image', 
         'PIL.ImageTk',
+        'PIL.ImageOps',
         'PIL.ExifTags',
         'tkinter',
         'tkinter.ttk',
