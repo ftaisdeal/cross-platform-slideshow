@@ -13,15 +13,38 @@ import locale
 from pathlib import Path
 from PIL import Image, ImageTk, ImageOps
 class SlideshowApp:
-    def update_thumbnails(self):
+    def update_thumbnails(self, reset_selection=True):
         # Clear previous thumbnails
         for widget in self.thumbnail_frame.winfo_children():
             widget.destroy()
         self.thumbnails = []
+        
+        # Only reset thumbnail selection when switching directories
+        if reset_selection:
+            self.selected_thumbnail_idx = None
+        
+        # Force layout update and reset canvas scroll position
+        self.thumbnail_frame.update_idletasks()
+        if reset_selection:
+            self.thumbnail_canvas.yview_moveto(0)  # Reset scroll to top
+        
         directory = self.directory_var.get().strip()
         if not directory or not os.path.exists(directory):
+            # Clear the canvas scrollregion for empty directory
+            self.thumbnail_canvas.configure(scrollregion=(0, 0, 0, 0))
             return
+            
         image_files = get_image_files(directory)
+        
+        # If no images found, clear scrollregion and return
+        if not image_files:
+            self.thumbnail_canvas.configure(scrollregion=(0, 0, 0, 0))
+            return
+        
+        # Select the first image as default only when resetting
+        if reset_selection and self.selected_thumbnail_idx is None:
+            self.selected_thumbnail_idx = 0
+            
         for idx, img_path in enumerate(image_files):
             try:
                 img = Image.open(img_path)
@@ -29,30 +52,38 @@ class SlideshowApp:
                 img = apply_exif_orientation(img)
                 img.thumbnail((96, 96))
                 thumb = ImageTk.PhotoImage(img)
+                
+                # Always create a border frame for consistent sizing
                 if idx == self.selected_thumbnail_idx:
-                    # Create a white frame as border
+                    # White frame for selected thumbnail
                     border_frame = tk.Frame(self.thumbnail_frame, bg="white", bd=0)
                     border_frame.grid(row=idx, column=0, pady=2, padx=2, sticky="e")
                     lbl = tk.Label(border_frame, image=thumb, relief="flat", bd=0, bg="#444")
                     lbl.pack(padx=2, pady=2)  # This creates the white border effect
-                    lbl.bind("<Button-1>", lambda e, i=idx: self.on_thumbnail_click(i))
-                    self.thumbnails.append(lbl)
                 else:
-                    lbl = tk.Label(self.thumbnail_frame, image=thumb, relief="flat", bd=0, bg="#222")
-                    lbl.grid(row=idx, column=0, pady=2, padx=2, sticky="e")
-                    lbl.bind("<Button-1>", lambda e, i=idx: self.on_thumbnail_click(i))
-                    self.thumbnails.append(lbl)
+                    # Black frame for unselected thumbnail (same size as white)
+                    border_frame = tk.Frame(self.thumbnail_frame, bg="black", bd=0)
+                    border_frame.grid(row=idx, column=0, pady=2, padx=2, sticky="e")
+                    lbl = tk.Label(border_frame, image=thumb, relief="flat", bd=0, bg="#222")
+                    lbl.pack(padx=2, pady=2)  # Same padding for consistent size
+                
+                lbl.bind("<Button-1>", lambda e, i=idx: self.on_thumbnail_click(i))
+                self.thumbnails.append(lbl)
                 lbl.image = thumb
             except Exception as e:
                 print(f"Error loading thumbnail for {img_path}: {e}")
+        
+        # Force complete layout update and reconfigure canvas scrollregion
+        self.thumbnail_frame.update_idletasks()
+        self.thumbnail_canvas.configure(scrollregion=self.thumbnail_canvas.bbox("all"))
         
         # Update total time display when images change
         self.update_total_time_display()
 
     def on_thumbnail_click(self, idx):
         self.selected_thumbnail_idx = idx
-        # First, clear all existing thumbnails and recreate them with proper styling
-        self.update_thumbnails()
+        # Refresh thumbnails without resetting selection
+        self.update_thumbnails(reset_selection=False)
         self.thumbnail_frame.update_idletasks()
     def on_directory_entry_change(self, event=None):
         """Handle manual directory entry - validate, save, and update thumbnails"""
@@ -114,6 +145,10 @@ class SlideshowApp:
         self.loop_var = tk.BooleanVar(value=True)  # Loop by default
         self.selected_thumbnail_idx = None
         self.load_last_directory()
+        
+        # Create cross-platform menu bar
+        self.create_menu_bar()
+        
         self.setup_ui()
         initial_dir = self.directory_var.get().strip()
         if initial_dir:
@@ -128,6 +163,36 @@ class SlideshowApp:
         x = (ws // 2) - (w // 2)
         y = (hs // 2) - (h // 2) -200
         self.root.geometry(f'{w}x{h}+{x}+{y}')
+
+    def create_menu_bar(self):
+        """Create cross-platform menu bar"""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_separator()
+        
+        # Platform-specific quit command
+        if platform.system() == "Darwin":  # macOS
+            file_menu.add_command(label="Quit SlideShow", command=self.root.quit, accelerator="Cmd+Q")
+        else:  # Windows/Linux
+            file_menu.add_command(label="Exit", command=self.root.quit, accelerator="Ctrl+Q")
+        
+        # User Guide menu (renamed from Help to avoid macOS search bar)
+        guide_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="User Guide", menu=guide_menu)
+        guide_menu.add_command(label="SlideShow Guide", command=self.show_help, accelerator="F1")
+        
+        # Bind F1 key for help across all platforms
+        self.root.bind("<F1>", lambda e: self.show_help())
+        
+        # Bind Ctrl+Q (Windows/Linux) and Cmd+Q (macOS) for quit
+        if platform.system() == "Darwin":
+            self.root.bind("<Command-q>", lambda e: self.root.quit())
+        else:
+            self.root.bind("<Control-q>", lambda e: self.root.quit())
 
     def validate_numeric_input(self, var_name):
         def validate():
@@ -216,6 +281,25 @@ class SlideshowApp:
         start_btn.bind("<Button-1>", on_click)
         start_btn.bind("<Enter>", on_enter)
         start_btn.bind("<Leave>", on_leave)
+        
+        # User Guide button in lower center
+        help_frame = tk.Frame(main_frame)
+        help_frame.grid(row=3, column=1, pady=(10, 0))
+        help_btn = tk.Label(help_frame, text="User Guide", font=("Verdana", 12, "normal"), 
+                           fg="#666", bg=self.root.cget('bg'), cursor="hand2", 
+                           padx=4, pady=4, relief="flat")
+        help_btn.pack()
+        
+        def on_help_click(event):
+            self.show_help()
+        def on_help_enter(event):
+            help_btn.configure(fg="#333")
+        def on_help_leave(event):
+            help_btn.configure(fg="#666")
+        
+        help_btn.bind("<Button-1>", on_help_click)
+        help_btn.bind("<Enter>", on_help_enter)
+        help_btn.bind("<Leave>", on_help_leave)
 
     def update_total_time_display(self):
         """Calculate and display the total slideshow time"""
@@ -351,8 +435,121 @@ class SlideshowApp:
         self.root.lift()
         self.root.focus_force()
     
+    def show_help(self):
+        """Display the help dialog"""
+        HelpDialog(self.root)
+    
     def run(self):
         self.root.mainloop()
+
+class HelpDialog:
+    def __init__(self, parent):
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("SlideShow Help")
+        self.dialog.geometry("600x500")
+        self.dialog.resizable(False, False)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # Center the dialog
+        self.dialog.update_idletasks()
+        x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (600 // 2)
+        y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (500 // 2)
+        self.dialog.geometry(f"600x500+{x}+{y}")
+        
+        self.setup_help_content()
+        
+        # Bind Escape key and Command-W to close
+        self.dialog.bind("<Escape>", lambda e: self.dialog.destroy())
+        self.dialog.bind("<Command-w>", lambda e: self.dialog.destroy())
+        self.dialog.focus_set()
+    
+    def setup_help_content(self):
+        # Main container with padding
+        main_frame = ttk.Frame(self.dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="SlideShow Help", 
+                               font=("Verdana", 16, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Scrollable text area
+        text_frame = ttk.Frame(main_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Verdana", 14),
+                                  bg="white", fg="black", relief="sunken", bd=1)
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", 
+                                 command=self.text_widget.yview)
+        self.text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        self.text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Help content
+        help_text = """
+GETTING STARTED
+
+1. Select a directory containing your images using the "Browse..." button or by typing the path directly
+
+2. Adjust slideshow settings:
+   • Slide duration: How long each image is displayed (in seconds)
+   • Dissolve duration: Time for transition between images (in seconds)
+   • Loop: Whether to repeat the slideshow when it reaches the end
+
+3. Select a starting image by clicking on a thumbnail (optional - defaults to first image)
+
+4. Click "START" to begin the slideshow
+
+
+SLIDESHOW CONTROLS
+
+While the slideshow is running, you can use these keyboard controls:
+
+• Right Arrow: Go to next image
+• Left Arrow: Go to previous image  
+• Spacebar: Pause/resume the slideshow
+• Escape: Exit slideshow and return to main window
+
+
+THUMBNAILS
+
+• Click any thumbnail to select it as the starting image
+• The selected thumbnail will have a white border
+• When you start the slideshow, it will begin with the selected image
+• If no thumbnail is selected, the slideshow starts with the first image
+
+
+SUPPORTED FORMATS
+
+The following image formats are supported:
+• JPEG (.jpg, .jpeg)
+• PNG (.png)
+• WebP (.webp)
+• BMP (.bmp)
+• GIF (.gif)
+• TIFF (.tiff, .tif)
+
+
+TIPS & TRICKS
+
+• The total slideshow time is calculated and displayed below the directory field
+• Your last selected directory is automatically remembered
+• Images are displayed in your operating system's default sort order
+• Large images are automatically resized to fit your screen while maintaining aspect ratio
+• Images are automatically rotated based on their EXIF orientation data
+"""
+        
+        self.text_widget.insert("1.0", help_text)
+        self.text_widget.configure(state="disabled")  # Make read-only
+        
+        # Close button
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=(20, 0))
+        close_btn = ttk.Button(button_frame, text="Close", 
+                              command=self.dialog.destroy)
+        close_btn.pack()
 
 def get_image_files(directory):
     exts = ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif', '.tiff', '.tif')

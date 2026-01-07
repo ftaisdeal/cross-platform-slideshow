@@ -8,6 +8,9 @@ TO_DO.txt
 ehthumbs.db
 Thumbs.db
 
+# macOS DMG files
+*.dmg
+
 # Python
 __pycache__/
 *.py[cod]
