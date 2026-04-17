@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+import threading
 import platform
 from pathlib import Path
 from PIL import Image, ImageTk, ImageOps
@@ -111,28 +113,46 @@ class FullscreenImageViewer:
         new_canvas = self.prepare_canvas(img_path)
         if dissolve and hasattr(self, "current_canvas"):
             self.dissolving = True
-            self.dissolve_step = 0
             self.next_img_canvas = new_canvas
-            self._dissolve_images()
+            frames = self.dissolve_frames
+            # Blend frames in a background thread (PIL is thread-safe).
+            # Main thread converts each PIL image to PhotoImage and displays it
+            # only when its scheduled time slot arrives.
+            self._dissolve_blended = [None] * (frames + 1)
+            self._dissolve_frame_idx = 0
+            interval = self.dissolve_time_ms // frames
+
+            src = self.current_canvas.copy()
+            dst = new_canvas
+
+            def _prerender():
+                for i in range(frames + 1):
+                    self._dissolve_blended[i] = Image.blend(src, dst, i / frames)
+
+            threading.Thread(target=_prerender, daemon=True).start()
+            self.root.after(interval, self._dissolve_tick, interval, frames)
         else:
             self.display_img(new_canvas)
             self.current_canvas = new_canvas
             if not self.paused:
                 self.timer_id = self.root.after(self.display_time_ms, self.next_image)
 
-    def _dissolve_images(self):
-        frames = self.dissolve_frames
-        step = self.dissolve_step
-        alpha = step / frames
-        blended = Image.blend(self.current_canvas, self.next_img_canvas, alpha)
-        photo = ImageTk.PhotoImage(blended)
+    def _dissolve_tick(self, interval, frames):
+        i = self._dissolve_frame_idx
+        img = self._dissolve_blended[i]
+        if img is None:
+            # Frame not ready yet — retry after a short wait
+            self.dissolve_id = self.root.after(5, self._dissolve_tick, interval, frames)
+            return
+        photo = ImageTk.PhotoImage(img)
         self.label.config(image=photo)
         self.label.image = photo
         self.photo = photo
-        if step < frames:
-            self.dissolve_step += 1
-            self.dissolve_id = self.root.after(self.dissolve_time_ms // frames, self._dissolve_images)
+        self._dissolve_frame_idx += 1
+        if i < frames:
+            self.dissolve_id = self.root.after(interval, self._dissolve_tick, interval, frames)
         else:
+            self._dissolve_blended = None
             self.display_img(self.next_img_canvas)
             self.current_canvas = self.next_img_canvas
             self.dissolving = False
