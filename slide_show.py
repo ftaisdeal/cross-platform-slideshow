@@ -3,6 +3,7 @@ import sys
 import time
 import threading
 import platform
+import math
 from pathlib import Path
 from PIL import Image, ImageTk, ImageOps
 import tkinter as tk
@@ -115,22 +116,23 @@ class FullscreenImageViewer:
             self.dissolving = True
             self.next_img_canvas = new_canvas
             frames = self.dissolve_frames
-            # Blend frames in a background thread (PIL is thread-safe).
-            # Main thread converts each PIL image to PhotoImage and displays it
-            # only when its scheduled time slot arrives.
-            self._dissolve_blended = [None] * (frames + 1)
-            self._dissolve_frame_idx = 0
-            interval = self.dissolve_time_ms // frames
+            # _dissolve_blended grows as frames are appended by the bg thread.
+            # Ticking starts immediately using wall-clock time to pick the right
+            # frame, so the dissolve always finishes on schedule regardless of
+            # how long pre-rendering takes on high-DPI displays.
+            self._dissolve_blended = []
+            self._dissolve_deadline = time.monotonic() + self.dissolve_time_ms / 1000.0
 
             src = self.current_canvas.copy()
             dst = new_canvas
 
             def _prerender():
                 for i in range(frames + 1):
-                    self._dissolve_blended[i] = Image.blend(src, dst, i / frames)
+                    self._dissolve_blended.append(Image.blend(src, dst, i / frames))
 
             threading.Thread(target=_prerender, daemon=True).start()
-            self.root.after(interval, self._dissolve_tick, interval, frames)
+            interval = self.dissolve_time_ms // frames
+            self.dissolve_id = self.root.after(interval, self._dissolve_tick, interval, frames)
         else:
             self.display_img(new_canvas)
             self.current_canvas = new_canvas
@@ -138,26 +140,35 @@ class FullscreenImageViewer:
                 self.timer_id = self.root.after(self.display_time_ms, self.next_image)
 
     def _dissolve_tick(self, interval, frames):
-        i = self._dissolve_frame_idx
-        img = self._dissolve_blended[i]
-        if img is None:
-            # Frame not ready yet — retry after a short wait
-            self.dissolve_id = self.root.after(5, self._dissolve_tick, interval, frames)
-            return
-        photo = ImageTk.PhotoImage(img)
-        self.label.config(image=photo)
-        self.label.image = photo
-        self.photo = photo
-        self._dissolve_frame_idx += 1
-        if i < frames:
-            self.dissolve_id = self.root.after(interval, self._dissolve_tick, interval, frames)
-        else:
+        now = time.monotonic()
+        remaining = self._dissolve_deadline - now
+
+        if remaining <= 0:
+            # Time's up — jump straight to the final image.
             self._dissolve_blended = None
             self.display_img(self.next_img_canvas)
             self.current_canvas = self.next_img_canvas
             self.dissolving = False
             if not self.paused:
                 self.timer_id = self.root.after(self.display_time_ms, self.next_image)
+            return
+
+        # Which frame *should* be on screen right now?
+        elapsed = self.dissolve_time_ms / 1000.0 - remaining
+        target_idx = min(int(math.ceil(elapsed * frames / (self.dissolve_time_ms / 1000.0))), frames)
+
+        blended = self._dissolve_blended
+        # Use the highest-indexed frame that has been rendered, up to target.
+        available = len(blended) - 1
+        show_idx = min(target_idx, available)
+
+        if show_idx >= 0:
+            photo = ImageTk.PhotoImage(blended[show_idx])
+            self.label.config(image=photo)
+            self.label.image = photo
+            self.photo = photo
+
+        self.dissolve_id = self.root.after(interval, self._dissolve_tick, interval, frames)
 
     def display_img(self, img):
         photo = ImageTk.PhotoImage(img)
