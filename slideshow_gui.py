@@ -434,7 +434,37 @@ class SlideshowApp:
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
+
+        # Refresh thumbnails to highlight the last-viewed slide, then scroll
+        # the thumbnail panel so that slide is visible.
+        self.update_thumbnails(reset_selection=False)
+        self._scroll_to_selected_thumbnail()
     
+    def _scroll_to_selected_thumbnail(self):
+        """Scroll the thumbnail canvas to keep the selected thumbnail centred."""
+        if self.selected_thumbnail_idx is None:
+            return
+        self.thumbnail_frame.update_idletasks()
+        bbox = self.thumbnail_canvas.bbox("all")
+        if not bbox:
+            return
+        total_height = bbox[3] - bbox[1]
+        if total_height <= 0:
+            return
+        directory = self.directory_var.get().strip()
+        if not directory or not os.path.exists(directory):
+            return
+        image_files = get_image_files(directory)
+        total = len(image_files)
+        if total == 0:
+            return
+        row_height = total_height / total
+        canvas_height = self.thumbnail_canvas.winfo_height()
+        target_y = self.selected_thumbnail_idx * row_height + row_height / 2 - canvas_height / 2
+        target_y = max(0.0, target_y)
+        fraction = min(1.0, target_y / total_height)
+        self.thumbnail_canvas.yview_moveto(fraction)
+
     def show_help(self):
         """Display the help dialog"""
         HelpDialog(self.root)
@@ -694,6 +724,11 @@ class FullscreenImageViewer:
 
     def show_image(self, idx, dissolve=True):
         print(f"Showing image {idx + 1}/{len(self.image_files)}: {self.image_files[idx]}")
+        
+        # Keep the launcher's selected thumbnail in sync so it reflects the
+        # last-viewed slide when the user exits the slideshow.
+        if self.launcher_app:
+            self.launcher_app.selected_thumbnail_idx = idx
         
         if self.timer_id:
             self.root.after_cancel(self.timer_id)
