@@ -520,21 +520,15 @@ class HelpDialog:
         # Help content
         help_text = """
 GETTING STARTED
-
 1. Select a directory containing your images using the "Browse..." button or by typing the path directly
-
 2. Adjust slideshow settings:
    • Slide duration: How long each image is displayed (in seconds)
    • Dissolve duration: Time for transition between images (in seconds)
    • Loop: Whether to repeat the slideshow when it reaches the end
-
 3. Select a starting image by clicking on a thumbnail (optional - defaults to first image)
-
 4. Click "START" to begin the slideshow
 
-
 SLIDESHOW CONTROLS
-
 While the slideshow is running, you can use these keyboard controls:
 
 • Right Arrow: Go to next image
@@ -542,18 +536,13 @@ While the slideshow is running, you can use these keyboard controls:
 • Spacebar: Pause/resume the slideshow
 • Escape: Exit slideshow and return to main window
 
-
 THUMBNAILS
-
 • Click any thumbnail to select it as the starting image
 • The selected thumbnail will have a white border
 • When you start the slideshow, it will begin with the selected image
 • If no thumbnail is selected, the slideshow starts with the first image
 
-
 SUPPORTED FORMATS
-
-The following image formats are supported:
 • JPEG (.jpg, .jpeg)
 • PNG (.png)
 • WebP (.webp)
@@ -561,11 +550,10 @@ The following image formats are supported:
 • GIF (.gif)
 • TIFF (.tiff, .tif)
 
-
 TIPS & TRICKS
-
+• The last selected directory is automatically remembered
+• The settings for slide duration and dissolve duration are remembered
 • The total slideshow time is calculated and displayed below the directory field
-• Your last selected directory is automatically remembered
 • Images are displayed in your operating system's default sort order
 • Large images are automatically resized to fit your screen while maintaining aspect ratio
 • Images are automatically rotated based on their EXIF orientation data
