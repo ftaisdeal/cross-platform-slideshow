@@ -530,7 +530,6 @@ GETTING STARTED
 
 SLIDESHOW CONTROLS
 While the slideshow is running, you can use these keyboard controls:
-
 • Right Arrow: Go to next image
 • Left Arrow: Go to previous image  
 • Spacebar: Pause/resume the slideshow
