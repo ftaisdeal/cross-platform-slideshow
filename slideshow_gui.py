@@ -68,6 +68,11 @@ class SlideshowApp:
                     lbl.pack(padx=2, pady=2)  # Same padding for consistent size
                 
                 lbl.bind("<Button-1>", lambda e, i=idx: self.on_thumbnail_click(i))
+                # Bind scroll events to labels and border frames so scrolling works anywhere
+                for w in (lbl, border_frame):
+                    w.bind("<MouseWheel>", self._on_mousewheel)
+                    w.bind("<Button-4>", self._on_mousewheel_linux_up)
+                    w.bind("<Button-5>", self._on_mousewheel_linux_down)
                 self.thumbnails.append(lbl)
                 lbl.image = thumb
             except Exception as e:
@@ -222,6 +227,35 @@ class SlideshowApp:
         self.thumbnail_frame = tk.Frame(self.thumbnail_canvas, bg="#222")
         self.thumbnail_canvas.create_window((0, 0), window=self.thumbnail_frame, anchor="nw")
         self.thumbnail_frame.bind("<Configure>", lambda e: self.thumbnail_canvas.configure(scrollregion=self.thumbnail_canvas.bbox("all")))
+
+        # Bind mouse wheel scrolling to the thumbnail canvas
+        def _on_mousewheel(event):
+            # macOS trackpad sends small delta values (e.g. ±3); dividing by 120 would give 0.
+            # On Windows, delta is ±120 per notch, so divide to get ±1 unit.
+            if platform.system() == "Darwin":
+                self.thumbnail_canvas.yview_scroll(-1 * event.delta, "units")
+            else:
+                self.thumbnail_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        def _on_mousewheel_linux_up(event):
+            self.thumbnail_canvas.yview_scroll(-1, "units")
+        def _on_mousewheel_linux_down(event):
+            self.thumbnail_canvas.yview_scroll(1, "units")
+
+        for widget in (self.thumbnail_canvas, self.thumbnail_frame):
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel_linux_up)
+            widget.bind("<Button-5>", _on_mousewheel_linux_down)
+
+        # Propagate scroll events from thumbnail labels to the canvas
+        def _bind_scroll_to_children(parent):
+            for child in parent.winfo_children():
+                child.bind("<MouseWheel>", _on_mousewheel)
+                child.bind("<Button-4>", _on_mousewheel_linux_up)
+                child.bind("<Button-5>", _on_mousewheel_linux_down)
+        self._bind_scroll_to_children = _bind_scroll_to_children
+        self._on_mousewheel = _on_mousewheel
+        self._on_mousewheel_linux_up = _on_mousewheel_linux_up
+        self._on_mousewheel_linux_down = _on_mousewheel_linux_down
 
         title_label = ttk.Label(main_frame, text="SlideShow", font=("Verdana", 24, "bold"))
         title_label.grid(row=0, column=1, pady=(0, 0))
