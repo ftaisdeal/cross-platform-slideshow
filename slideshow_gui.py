@@ -11,7 +11,7 @@ import os
 import platform
 import locale
 from pathlib import Path
-from PIL import Image, ImageTk, ImageOps
+from PIL import Image, ImageTk, ImageOps, ImageDraw, ImageFont
 class SlideshowApp:
     def update_thumbnails(self, reset_selection=True):
         # Clear previous thumbnails
@@ -51,6 +51,23 @@ class SlideshowApp:
                 # Apply EXIF orientation before creating thumbnail
                 img = apply_exif_orientation(img)
                 img.thumbnail((96, 96))
+                # Optionally overlay image number in the bottom-right corner
+                if self.show_thumb_numbers_var.get():
+                    img = img.convert("RGBA")
+                    draw = ImageDraw.Draw(img)
+                    label = str(idx + 1)
+                    try:
+                        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 11)
+                    except Exception:
+                        font = ImageFont.load_default()
+                    bbox = draw.textbbox((0, 0), label, font=font)
+                    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                    margin = 3
+                    rx0 = img.width - tw - margin * 2 - 1
+                    ry0 = img.height - th - margin * 2 - 1
+                    draw.rectangle([rx0, ry0, img.width - 1, img.height - 1], fill=(0, 0, 0, 160))
+                    draw.text((rx0 + margin, ry0 + margin), label, font=font, fill=(255, 255, 255, 230))
+                    img = img.convert("RGB")
                 thumb = ImageTk.PhotoImage(img)
                 
                 # Always create a border frame for consistent sizing
@@ -148,6 +165,7 @@ class SlideshowApp:
         self.display_time_var = tk.StringVar(value="10")
         self.dissolve_time_var = tk.StringVar(value="1")
         self.loop_var = tk.BooleanVar(value=True)  # Loop by default
+        self.show_thumb_numbers_var = tk.BooleanVar(value=True)  # Show numbers by default
         self.selected_thumbnail_idx = None
         self.load_last_directory()
         
@@ -285,6 +303,14 @@ class SlideshowApp:
         # Loop checkbox
         self.loop_checkbox = ttk.Checkbutton(dir_frame, text="Loop slideshow", variable=self.loop_var)
         self.loop_checkbox.grid(row=4, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(5, 0))
+
+        # Show thumbnail numbers checkbox
+        self.thumb_numbers_checkbox = ttk.Checkbutton(
+            dir_frame, text="Show image numbers on thumbnails",
+            variable=self.show_thumb_numbers_var,
+            command=lambda: self.update_thumbnails(reset_selection=False)
+        )
+        self.thumb_numbers_checkbox.grid(row=5, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(2, 0))
         
         self.update_total_time_display()
 
@@ -517,7 +543,7 @@ class SlideshowApp:
 class HelpDialog:
     def __init__(self, parent):
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("SlideShow Help")
+        self.dialog.title("User Guide")
         self.dialog.geometry("600x500")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
@@ -541,17 +567,13 @@ class HelpDialog:
         main_frame = ttk.Frame(self.dialog, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Title
-        title_label = ttk.Label(main_frame, text="SlideShow Help", 
-                               font=("Verdana", 16, "bold"))
-        title_label.pack(pady=(0, 20))
-        
         # Scrollable text area
         text_frame = ttk.Frame(main_frame)
         text_frame.pack(fill=tk.BOTH, expand=True)
         
         self.text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Verdana", 14),
-                                  bg="white", fg="black", relief="sunken", bd=1)
+                                  bg="white", fg="black", relief="sunken", bd=1,
+                                  padx=12, pady=12, spacing1=4, spacing3=4)
         scrollbar = ttk.Scrollbar(text_frame, orient="vertical", 
                                  command=self.text_widget.yview)
         self.text_widget.configure(yscrollcommand=scrollbar.set)
@@ -560,28 +582,28 @@ class HelpDialog:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Help content
-        help_text = """
-GETTING STARTED
-1. Select a directory containing your images using the "Browse..." button or by typing the path directly
+        help_text = """GETTING STARTED
+1. Select a directory containing your images using the "Browse..." button or by typing the path directly.
 2. Adjust slideshow settings:
-   • Slide duration: How long each image is displayed (in seconds)
-   • Dissolve duration: Time for transition between images (in seconds)
-   • Loop: Whether to repeat the slideshow when it reaches the end
-3. Select a starting image by clicking on a thumbnail (optional - defaults to first image)
-4. Click "START" to begin the slideshow
+• Slide duration: How long each image is displayed (in seconds)
+• Dissolve duration: Time for transition between images (in seconds)
+• Loop: Whether to repeat the slideshow when it reaches the end
+• Image number: Whether to show the image number in the thumbnails
+3. Select a starting image by clicking on a thumbnail (optional - defaults to first image).
+4. Click "START" to begin the slideshow.
 
 SLIDESHOW CONTROLS
 While the slideshow is running, you can use these keyboard controls:
+• Spacebar: Pause/resume the slideshow
 • Right Arrow: Go to next image
 • Left Arrow: Go to previous image  
-• Spacebar: Pause/resume the slideshow
 • Escape: Exit slideshow and return to main window
 
 THUMBNAILS
-• Click any thumbnail to select it as the starting image
-• The selected thumbnail will have a white border
-• When you start the slideshow, it will begin with the selected image
-• If no thumbnail is selected, the slideshow starts with the first image
+• Click any thumbnail to select it as the starting image.
+• The selected thumbnail will have a white border.
+• When you start the slideshow, it will begin with the selected image.
+• If no thumbnail is selected, the slideshow starts with the first image.
 
 SUPPORTED FORMATS
 • JPEG (.jpg, .jpeg)
@@ -592,13 +614,13 @@ SUPPORTED FORMATS
 • TIFF (.tiff, .tif)
 
 TIPS & TRICKS
-• The last selected directory is automatically remembered
-• The settings for slide duration and dissolve duration are remembered
-• The total slideshow time is calculated and displayed below the directory field
-• Images are displayed in your operating system's default sort order
-• Large images are automatically resized to fit your screen while maintaining aspect ratio
-• Images are automatically rotated based on their EXIF orientation data
-"""
+• The last selected directory is automatically remembered.
+• The settings for slide duration and dissolve duration are remembered.
+• The total duration of the slideshow is calculated from the duration each slide plus the duration of the dissolves and is displayed below the directory field.
+• If you select a thumbnail image the slide show will start from that image.
+• Images are displayed in your operating system's default sort order.
+• Large images are automatically resized to fit your screen while maintaining aspect ratio.
+• Images are automatically rotated based on their EXIF orientation data."""
         
         self.text_widget.insert("1.0", help_text)
         self.text_widget.configure(state="disabled")  # Make read-only
