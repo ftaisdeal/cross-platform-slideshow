@@ -240,13 +240,17 @@ class SlideshowApp:
         browse_btn = ttk.Button(dir_frame, text="Browse...", command=self.browse_directory)
         browse_btn.grid(row=1, column=2, sticky="w")
         
+        # Number of images display
+        self.num_images_label = ttk.Label(dir_frame, text="", font=("Verdana", 11), foreground="#666")
+        self.num_images_label.grid(row=2, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(5, 0))
+
         # Total time display
         self.total_time_label = ttk.Label(dir_frame, text="", font=("Verdana", 11), foreground="#666")
-        self.total_time_label.grid(row=2, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(5, 0))
+        self.total_time_label.grid(row=3, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(0, 0))
         
         # Loop checkbox
         self.loop_checkbox = ttk.Checkbutton(dir_frame, text="Loop slideshow", variable=self.loop_var)
-        self.loop_checkbox.grid(row=3, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(5, 0))
+        self.loop_checkbox.grid(row=4, column=0, columnspan=3, sticky="w", padx=(2, 0), pady=(5, 0))
         
         self.update_total_time_display()
 
@@ -305,6 +309,7 @@ class SlideshowApp:
         """Calculate and display the total slideshow time"""
         directory = self.directory_var.get().strip()
         if not directory or not os.path.exists(directory):
+            self.num_images_label.config(text="")
             self.total_time_label.config(text="")
             return
         
@@ -312,8 +317,11 @@ class SlideshowApp:
         num_images = len(image_files)
         
         if num_images == 0:
-            self.total_time_label.config(text="No images found")
+            self.num_images_label.config(text="No images found")
+            self.total_time_label.config(text="")
             return
+
+        self.num_images_label.config(text=f"Number of images: {num_images}")
         
         try:
             display_time = float(self.display_time_var.get()) if self.display_time_var.get() else 10.0
@@ -353,7 +361,7 @@ class SlideshowApp:
             else:
                 time_str = f"{hours}h {minutes}m {seconds}s"
         
-        self.total_time_label.config(text=f"Total slideshow time: {time_str} ({num_images} images)")
+        self.total_time_label.config(text=f"Total slideshow time: {time_str}")
 
     def start_slideshow(self):
         directory = self.directory_var.get().strip()
