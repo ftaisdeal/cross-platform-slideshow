@@ -4,11 +4,7 @@ Thank you for your interest in contributing to SlideShow! We welcome contributio
 
 ## License Agreement
 
-**Important**: By contributing to this project, you agree that your contributions will be licensed under the same [Creative Commons Attribution-NonCommercial 4.0 International License](LICENSE) as the rest of the project. This means:
-
-- Your contributions will be freely available for personal, educational, and research use
-- Commercial use of the entire project (including your contributions) is prohibited
-- All contributors receive attribution for their work
+**Important**: By contributing to this project, you agree that your contributions will be licensed under the same [MIT License](LICENSE) as the rest of the project.
 
 If you're not comfortable with these terms, please don't submit contributions to this project.
 

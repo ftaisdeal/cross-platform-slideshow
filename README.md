@@ -2,21 +2,9 @@
 
 A cross-platform full-screen slideshow application with GUI and command-line interfaces.
 
-![Platform Support](https:/## Keyboard Controls
-
-| Key | Action |
-|-----|--------|
-| `Right Arrow` | Next image |
-| `Left Arrow` | Previous image |
-| `Space` | Pause/Resume |
-| `Escape` | Return to launcher (or quit if launched from command line) |
-
-**To quit the application:**
-- **macOS**: `Cmd+Q` or SlideShow menu → Quit
-- **Windows**: Click the X button, Alt+F4, or File menu → Exit  
-- **Linux**: `Ctrl+Q` or application menu → Quitelds.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
+![Platform Support](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-green)
-![License](https://img.shields.io/badge/License-CC%20BY--NC%204.0-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Features
 
@@ -31,7 +19,7 @@ A cross-platform full-screen slideshow application with GUI and command-line int
 - **Storage of state** for directory and durations
 - **GUI and command-line** interfaces available
 
-> **📄 License Notice**: SlideShow is free for personal, educational, and research use under the CC BY-NC 4.0 license. Commercial use is prohibited. [Learn more](#license)
+> **📄 License Notice**: SlideShow is released under the MIT License. [Learn more](#license)
 
 ## Installation
 
@@ -39,19 +27,19 @@ A cross-platform full-screen slideshow application with GUI and command-line int
 
 #### Windows
 1. Go to [Releases](../../releases)
-2. Download \`SlideShow-Windows.zip\`
-3. Extract and run \`SlideShow.exe\`
+2. Download `SlideShow-Windows.zip`
+3. Extract and run `SlideShow.exe`
 
 #### macOS
 1. Go to [Releases](../../releases)
-2. Download \`SlideShow-macOS.zip\`
-3. Extract and run \`SlideShow.app\`
+2. Download `SlideShow-macOS.zip`
+3. Extract and run `SlideShow.app`
 4. If macOS shows security warnings, go to System Preferences > Security & Privacy > General and click "Open Anyway"
 
 #### Linux
 1. Go to [Releases](../../releases)
-2. Download \`SlideShow-Linux.zip\`
-3. Extract and run \`./SlideShow\`
+2. Download `SlideShow-Linux.zip`
+3. Extract and run `./SlideShow`
 
 ### Option 2: Run from Source
 
@@ -62,62 +50,62 @@ A cross-platform full-screen slideshow application with GUI and command-line int
 #### Installation Steps
 
 1. **Clone the repository**
-   \`\`\`bash
+   ```bash
    git clone https://github.com/ftaisdeal/python_slide_show.git
    cd python_slide_show
-   \`\`\`
+   ```
 
 2. **Create virtual environment (recommended)**
    
    **Windows:**
-   \`\`\`cmd
+   ```cmd
    python -m venv .venv
-   .venv\\Scripts\\activate
-   \`\`\`
+   .venv\Scripts\activate
+   ```
    
    **macOS/Linux:**
-   \`\`\`bash
+   ```bash
    python3 -m venv .venv
    source .venv/bin/activate
-   \`\`\`
+   ```
 
 3. **Install dependencies**
-   \`\`\`bash
+   ```bash
    pip install pillow
-   \`\`\`
+   ```
 
 4. **Run the application**
    
    **GUI Version (recommended):**
-   \`\`\`bash
-   python slide_show_gui.py
-   \`\`\`
+   ```bash
+   python slideshow_gui.py
+   ```
    
    **Command Line Version:**
-   \`\`\`bash
+   ```bash
    python slide_show.py /path/to/your/photos
-   \`\`\`
+   ```
 
 ### Option 3: Build Your Own Executable
 
 1. **Install PyInstaller**
-   \`\`\`bash
+   ```bash
    pip install pyinstaller
-   \`\`\`
+   ```
 
 2. **Build the application**
    
    **Windows:**
-   \`\`\`cmd
-   pyinstaller --onedir --windowed --name "SlideShow" slide_show_gui.py
-   \`\`\`
+   ```cmd
+   pyinstaller --onedir --windowed --name "SlideShow" slideshow_gui.py
+   ```
    
    **macOS/Linux:**
-   \`\`\`bash
-   pyinstaller --onedir --windowed --name "SlideShow" slide_show_gui.py
-   \`\`\`
+   ```bash
+   pyinstaller --onedir --windowed --name "SlideShow" slideshow_gui.py
+   ```
 
-3. **Find your executable in the \`dist/\` folder**
+3. **Find your executable in the `dist/` folder**
 
 ## Usage
 
@@ -128,12 +116,12 @@ A cross-platform full-screen slideshow application with GUI and command-line int
 4. Click "Start Slideshow"
 
 ### Command Line Version
-\`\`\`bash
+```bash
 python slide_show.py <directory> [display_time_seconds] [dissolve_time_seconds]
-\`\`\`
+```
 
 **Examples:**
-\`\`\`bash
+```bash
 # Basic usage with defaults (5s display, 1s dissolve)
 python slide_show.py ~/Pictures/vacation
 
@@ -142,16 +130,21 @@ python slide_show.py ~/Pictures/vacation 8 2
 
 # Fast slideshow (1s display, 0.5s dissolve)
 python slide_show.py ~/Pictures/vacation 1 0.5
-\`\`\`
+```
 
 ## Keyboard Controls
 
 | Key | Action |
 |-----|--------|
-| \`Escape\` or \`q\` | Quit slideshow |
-| \`Space\` | Pause/Resume |
-| \`Right Arrow\` | Next image |
-| \`Left Arrow\` | Previous image |
+| `Right Arrow` | Next image |
+| `Left Arrow` | Previous image |
+| `Space` | Pause/Resume |
+| `Escape` | Return to launcher (GUI) or quit (command line) |
+
+**To quit the application (GUI):**
+- **macOS**: `Cmd+Q` or SlideShow menu → Quit
+- **Windows**: Click the X button, Alt+F4, or File menu → Exit
+- **Linux**: `Ctrl+Q` or application menu → Quit
 
 ## Supported Image Formats
 
@@ -218,17 +211,7 @@ The application automatically reads and applies EXIF orientation data from your 
 
 ## License
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License** (CC BY-NC 4.0).
-
-### What this means:
-- ✅ **You can**: Use, modify, and share this software freely for personal, educational, and research purposes
-- ✅ **You can**: Create derivative works and improvements (with attribution)
-- ❌ **You cannot**: Use this software for commercial purposes or sell it
-- 📝 **You must**: Provide appropriate attribution when sharing or modifying
-
-For the complete license terms, see the [LICENSE](LICENSE) file or visit [Creative Commons BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
-
-**Note**: This non-commercial license ensures the SlideShow software remains free and accessible while preventing commercial exploitation.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for the full text.
 
 ## Acknowledgments
 
